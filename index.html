@@ -695,6 +695,20 @@ function flashEmpty(){
   result.innerHTML='答えを入力してください。';
 }
 
+/* --- ソフトキーボードの制御 ---------------------------------
+   canvas は描画のため pointerdown で preventDefault しており、
+   「タップでフォーカスが外れる」標準動作まで止まってしまう。
+   そのため入力欄以外に触れたら明示的に blur してキーボードを閉じる。
+   （capture 段階なので canvas の preventDefault より先に動く） */
+function blurInputs(){
+  var a=document.activeElement;
+  if(a&&a.tagName==='INPUT') a.blur();
+}
+document.addEventListener('pointerdown',function(e){
+  if(e.target&&e.target.tagName==='INPUT') return;
+  blurInputs();
+},true);
+
 btnCheck.addEventListener('click',check);
 btnNext.addEventListener('click',newProblem);
 $('btn-skip').addEventListener('click',newProblem);
@@ -715,8 +729,16 @@ $('btn-reset').addEventListener('click',function(){
 });
 
 [inX,inY,inRX,inRY].forEach(function(el){
+  /* Return（完了）で答え合わせ → そのままキーボードを閉じる */
   el.addEventListener('keydown',function(e){
-    if(e.key==='Enter'){ e.preventDefault(); answered?newProblem():check(); }
+    if(e.key==='Enter'){ e.preventDefault(); el.blur(); answered?newProblem():check(); }
+  });
+  /* キーボードで入力欄が隠れないよう、表示されてから画面中央に寄せる */
+  el.addEventListener('focus',function(){
+    setTimeout(function(){
+      try{ el.scrollIntoView({block:'center',behavior:'smooth'}); }
+      catch(err){ el.scrollIntoView(); }
+    },350);
   });
 });
 
