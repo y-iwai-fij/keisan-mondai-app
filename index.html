@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="連立ドリル">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>連立方程式 練習ドリル</title>
+<style>
+:root{
+  --bg:#f1f5f9; --card:#ffffff; --ink:#0f172a; --sub:#64748b; --line:#e2e8f0;
+  --blue:#2563eb; --blue-d:#1d4ed8; --orange:#ea580c; --green:#16a34a; --red:#dc2626;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px); --safe-r:env(safe-area-inset-right,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  background:var(--bg); color:var(--ink);
+  height:100vh; height:100dvh;
+  display:flex; flex-direction:column; overflow:hidden;
+  touch-action:manipulation; overscroll-behavior:none;
+  -webkit-text-size-adjust:100%;
+}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+input{font:inherit}
+
+/* ===== error banner ===== */
+#errbar{display:none;background:var(--red);color:#fff;padding:10px 14px;font-size:13px;
+  white-space:pre-wrap;word-break:break-all;line-height:1.5;flex:none}
+
+/* ===== header ===== */
+header{
+  flex:none; background:var(--blue); color:#fff;
+  padding:calc(10px + var(--safe-t)) calc(14px + var(--safe-r)) 10px calc(14px + var(--safe-l));
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  box-shadow:0 1px 4px rgba(15,23,42,.18);
+}
+header h1{font-size:16px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.hdr-spacer{flex:1}
+.btn{border-radius:999px;padding:7px 15px;font-size:14px;font-weight:700;white-space:nowrap;
+  transition:transform .08s, background .15s}
+.btn:active{transform:scale(.95)}
+.btn-w{background:#fff;color:var(--blue)}
+.btn-g{background:rgba(255,255,255,.22);color:#fff}
+.btn-g.on{background:#fbbf24;color:#432c00}
+
+/* ===== status strip ===== */
+.status{
+  flex:none; background:#fff; border-bottom:1px solid var(--line);
+  padding:8px calc(14px + var(--safe-r)) 8px calc(14px + var(--safe-l));
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:13px;
+}
+.lv{font-weight:800;font-size:15px;color:var(--blue);white-space:nowrap}
+.lv small{display:block;font-size:11px;color:var(--sub);font-weight:600}
+.win{display:flex;gap:4px}
+.win i{width:16px;height:16px;border-radius:5px;background:#e2e8f0;display:block}
+.win i.o{background:var(--green)}
+.win i.x{background:var(--red)}
+.status .msg{color:var(--sub);font-weight:600}
+.status .reset{margin-left:auto;font-size:12px;color:var(--sub);text-decoration:underline}
+
+/* ===== layout ===== */
+main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l));min-height:0}
+.left{width:390px;flex:none;display:flex;flex-direction:column;gap:12px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.right{flex:1;min-width:0;position:relative;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+@media (max-width:820px){ .left{width:330px} }
+@media (max-width:700px){
+  main{flex-direction:column}
+  .left{width:auto;flex:none;overflow:visible}
+  .right{min-height:300px}
+}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h2{font-size:11px;font-weight:800;color:var(--sub);letter-spacing:.12em;margin-bottom:10px}
+
+/* ===== math ===== */
+.math{font-family:"Times New Roman",Times,serif;font-size:26px;line-height:1.75}
+.math i{font-style:italic}
+.qbox{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;padding:14px 16px;min-height:96px;
+  display:flex;align-items:center}
+.system{display:flex;align-items:center;gap:10px}
+.brace{font-size:56px;color:#cbd5e1;line-height:.9;font-weight:300}
+.eqs>div{white-space:nowrap}
+.qtext{font-size:18px;line-height:1.75}
+.frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 .2em;line-height:1.2;font-size:.92em}
+.frac>span:first-child{border-bottom:1.6px solid currentColor;padding:0 .28em}
+.frac>span:last-child{padding:0 .28em}
+
+/* ===== answer ===== */
+.ansrow{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.ansrow .fld{flex:1;display:flex;align-items:center;gap:8px}
+.ansrow label{font-family:"Times New Roman",Times,serif;font-style:italic;font-size:21px;white-space:nowrap}
+.ansrow input{width:100%;min-width:0;border:2px solid var(--line);border-radius:10px;padding:10px;
+  text-align:center;font-size:21px;outline:none;background:#fff;color:var(--ink)}
+.ansrow input:focus{border-color:var(--blue)}
+.ratio-sep{font-size:22px;font-weight:700;color:var(--sub)}
+
+.btn-check{width:100%;background:var(--orange);color:#fff;padding:14px;border-radius:14px;
+  font-size:17px;font-weight:800;box-shadow:0 4px 12px rgba(234,88,12,.3)}
+.btn-check:active{transform:scale(.97)}
+.btn-check:disabled{background:#cbd5e1;box-shadow:none;color:#fff}
+.btn-next{width:100%;background:var(--blue);color:#fff;padding:14px;border-radius:14px;
+  font-size:17px;font-weight:800;margin-top:10px;box-shadow:0 4px 12px rgba(37,99,235,.28)}
+.btn-next:active{transform:scale(.97)}
+
+.result{margin-top:12px;padding:12px;border-radius:12px;text-align:center;font-weight:800;font-size:16px}
+.result.ok{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+.result.ng{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
+
+/* ===== solution ===== */
+.sol{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px;display:none}
+.sol.show{display:block}
+.sol h3{font-size:12px;font-weight:800;color:var(--sub);letter-spacing:.1em;margin-bottom:10px}
+.step{margin-bottom:12px}
+.step .lb{font-size:12.5px;font-weight:700;color:var(--blue-d);margin-bottom:5px}
+.step .bd{font-family:"Times New Roman",Times,serif;font-size:19px;line-height:1.8;
+  background:#f8fafc;border-radius:9px;padding:9px 12px;overflow-x:auto}
+.step .bd .line{white-space:nowrap}
+.step .bd .system{transform:scale(.85);transform-origin:left center}
+.warn{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;font-size:13.5px;
+  line-height:1.7;white-space:normal!important;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;
+  border-radius:8px;padding:8px 10px}
+.sol-toggle{width:100%;margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:9px;
+  font-size:13px;font-weight:700;color:var(--sub);background:#f8fafc}
+
+.hint{background:#eff6ff;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px}
+.hint h3{font-size:13px;font-weight:800;color:#1e40af;margin-bottom:5px}
+.hint p{font-size:12.5px;line-height:1.75;color:#1d4ed8}
+
+/* ===== canvas ===== */
+.pad-label{position:absolute;top:8px;left:14px;color:#cbd5e1;font-size:12px;pointer-events:none;z-index:1}
+#canvas{
+  display:block;width:100%;height:100%;touch-action:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  background-image:linear-gradient(#eef2f7 1px,transparent 1px),linear-gradient(90deg,#eef2f7 1px,transparent 1px);
+  background-size:24px 24px;
+}
+</style>
+</head>
+<body>
+
+<div id="errbar"></div>
+
+<header>
+  <h1>連立方程式 練習ドリル</h1>
+  <div class="hdr-spacer"></div>
+  <button class="btn btn-g" id="btn-ratio-mode" type="button">比だけ特訓</button>
+  <button class="btn btn-g" id="btn-clear" type="button">メモを消す</button>
+  <button class="btn btn-w" id="btn-skip" type="button">スキップ</button>
+</header>
+
+<div class="status">
+  <div class="lv" id="lv">Level 1<small>基礎</small></div>
+  <div class="win" id="win"></div>
+  <div class="msg" id="msg"></div>
+  <button class="reset" id="btn-reset" type="button">進捗をリセット</button>
+</div>
+
+<main>
+  <div class="left">
+    <div class="card">
+      <h2>問題</h2>
+      <div class="qbox math" id="qbox"></div>
+
+      <h2 style="margin-top:16px">答えを入力</h2>
+
+      <div class="ansrow" id="ans-xy">
+        <div class="fld"><label>x =</label><input type="number" id="in-x" inputmode="numeric" pattern="-?[0-9]*" enterkeyhint="done"></div>
+        <div class="fld"><label>y =</label><input type="number" id="in-y" inputmode="numeric" pattern="-?[0-9]*" enterkeyhint="done"></div>
+      </div>
+
+      <div class="ansrow" id="ans-ratio" style="display:none">
+        <label style="white-space:nowrap">x : y =</label>
+        <input type="number" id="in-rx" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" style="flex:1">
+        <span class="ratio-sep">:</span>
+        <input type="number" id="in-ry" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" style="flex:1">
+      </div>
+
+      <button class="btn-check" id="btn-check" type="button">答え合わせ</button>
+      <button class="btn-next" id="btn-next" type="button" style="display:none">次の問題へ</button>
+
+      <div class="result" id="result" style="display:none"></div>
+      <button class="sol-toggle" id="btn-sol" type="button" style="display:none">解き方を見る</button>
+      <div class="sol" id="sol"><h3>解き方</h3><div id="sol-body"></div></div>
+    </div>
+
+    <div class="hint">
+      <h3>💡 ヒント</h3>
+      <p id="hint-text"></p>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="pad-label">✍️ ここに計算をメモできます（Apple Pencil / 指）</div>
+    <canvas id="canvas"></canvas>
+  </div>
+</main>
+
+<script>
+/* ============================================================
+   自己診断：どんなエラーでも画面に出す（iPadでは devtools が無いため）
+   ============================================================ */
+(function(){
+  function show(t){
+    var b=document.getElementById('errbar');
+    if(!b) return;
+    b.style.display='block';
+    b.textContent='⚠ エラー: '+t;
+  }
+  window.addEventListener('error',function(e){
+    show((e.message||'unknown')+'  @'+(e.filename||'')+':'+(e.lineno||0));
+  });
+  window.addEventListener('unhandledrejection',function(e){
+    show('Promise: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason)));
+  });
+})();
+
+(function(){
+'use strict';
+
+/* ============================================================
+   小道具
+   ============================================================ */
+var rnd=function(n){return Math.floor(Math.random()*n);};
+var randInt=function(a,b){return a+rnd(b-a+1);};
+var pick=function(a){return a[rnd(a.length)];};
+/* 絶対値 1..m の 0 でない整数（符号つき） */
+var rc=function(m,negOK){var v=randInt(1,m);return (negOK===false)?v:v*pick([1,-1]);};
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){var t=a%b;a=b;b=t;}return a||1;}
+function lcm(a,b){return Math.abs(a*b)/gcd(a,b);}
+
+var X='<i>x</i>', Y='<i>y</i>';
+
+/* 数値の表示（負号を数学用のマイナス記号にそろえる） */
+function n(v){ return v<0 ? '−'+Math.abs(v) : ''+v; }
+
+/* 先頭の項： 3x / x / −x */
+function coefTerm(n,v){
+  if(n===1) return v;
+  if(n===-1) return '−'+v;
+  return (n<0?'−'+Math.abs(n):''+n)+v;
+}
+/* 2番目以降の項： " + 3y" / " − y" */
+function joinTerm(n,v){
+  var a=Math.abs(n);
+  return (n<0?' − ':' + ')+(a===1?v:a+v);
+}
+function eqStr(a,b,c){ return coefTerm(a,X)+joinTerm(b,Y)+' = '+n(c); }
+function frac(n,d){ return '<span class="frac"><span>'+n+'</span><span>'+d+'</span></span>'; }
+function systemHTML(l1,l2){
+  return '<div class="system"><span class="brace">{</span><div class="eqs"><div>'+l1+'</div><div>'+l2+'</div></div></div>';
+}
+function lineHTML(s){ return '<div class="line">'+s+'</div>'; }
+
+/* ============================================================
+   問題生成
+   ------------------------------------------------------------
+   全パターン共通で「解を先に整数で決め → 係数から定数項を逆算」し、
+   さらに生成後に必ず検証をかける：
+     * 判別式 a1*b2 - a2*b1 ≠ 0        （解が無数／不能 になる問題を排除）
+     * 2式が同一でない
+     * 定数項が大きすぎない
+     * x, y が同時に 0 でない
+   ============================================================ */
+
+/* 解の候補（80%の確率で x,y とも 0 以外にする） */
+function genSolution(range){
+  var x,y,guard=0;
+  do{
+    x=randInt(-range,range); y=randInt(-range,range);
+    guard++;
+    if(guard>200) break;
+  }while((x===0&&y===0)||(Math.random()<0.8&&(x===0||y===0)));
+  return {x:x,y:y};
+}
+
+/* 生成結果の検証（ここが「変な問題」を止める最後の砦） */
+function validLinear(a1,b1,c1,a2,b2,c2,x,y,cap){
+  if(a1===0||b1===0||a2===0||b2===0) return false;
+  if(a1*b2-a2*b1===0) return false;                 /* ← 解が一意でない問題を排除 */
+  if(a1===a2&&b1===b2&&c1===c2) return false;       /* ← 同一の式が2本 */
+  if(Math.abs(c1)>cap||Math.abs(c2)>cap) return false;
+  if(a1*x+b1*y!==c1||a2*x+b2*y!==c2) return false;  /* ← 解が本当に成り立つか */
+  return true;
+}
+
+/* --- Level 1：足し引きだけで消せる基本加減法 --- */
+function genL1(){
+  for(var i=0;i<400;i++){
+    var s=genSolution(8);
+    var b1=pick([1,-1]), b2=pick([1,-1]);
+    var a1=pick([1,1,1,2,2,3]), a2=pick([1,1,2,2,3,3]);
+    var c1=a1*s.x+b1*s.y, c2=a2*s.x+b2*s.y;
+    if(!validLinear(a1,b1,c1,a2,b2,c2,s.x,s.y,40)) continue;
+    return {kind:'linear',std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+            html:systemHTML(eqStr(a1,b1,c1),eqStr(a2,b2,c2))};
+  }
+  return genL1Fallback();
+}
+function genL1Fallback(){
+  var x=2,y=3;
+  return {kind:'linear',std:{a1:1,b1:1,c1:x+y,a2:1,b2:-1,c2:x-y},x:x,y:y,
+          html:systemHTML(eqStr(1,1,x+y),eqStr(1,-1,x-y))};
+}
+
+/* --- Level 2：どちらかを何倍かして係数を揃える加減法 --- */
+function genL2(){
+  for(var i=0;i<600;i++){
+    var s=genSolution(9);
+    var a1=rc(5), b1=rc(5), a2=rc(5), b2=rc(5);
+    /* 何倍かしないと消えない形にする */
+    if(Math.abs(a1)===Math.abs(a2)&&Math.abs(b1)===Math.abs(b2)) continue;
+    if(Math.abs(a1)===Math.abs(a2)||Math.abs(b1)===Math.abs(b2)){
+      if(Math.random()<0.7) continue;
+    }
+    /* 倍率が大きすぎる（暗算しづらい）組は避ける */
+    if(Math.min(lcm(a1,a2),lcm(b1,b2))>12) continue;
+    var c1=a1*s.x+b1*s.y, c2=a2*s.x+b2*s.y;
+    if(!validLinear(a1,b1,c1,a2,b2,c2,s.x,s.y,50)) continue;
+    return {kind:'linear',std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+            html:systemHTML(eqStr(a1,b1,c1),eqStr(a2,b2,c2))};
+  }
+  return genL1();
+}
+
+/* --- Level 3-A：かっこ外し（−( ) を高確率で混ぜる＝符号ミス特訓） --- */
+function genParen(cap){
+  cap=cap||50;
+  for(var i=0;i<800;i++){
+    var s=genSolution(8);
+    var wrapY=Math.random()<0.3;
+    var a1,b1,p,head,l1;
+
+    if(!wrapY){
+      /* k(x + p) の形。k=−1 を高確率にして −(x+p) を頻出させる */
+      a1=pick([-1,-1,-1,-1,2,3,-2,-3]);
+      b1=rc(4);
+      p=rc(5);
+      var c1p=a1*s.x+b1*s.y;
+      var rhs=c1p+a1*p;
+      var inner=X+(p<0?' − ':' + ')+Math.abs(p);
+      head=(a1===1)?'('+inner+')':(a1===-1)?'−('+inner+')':(a1<0?'−':'')+Math.abs(a1)+'('+inner+')';
+      l1=head+joinTerm(b1,Y)+' = '+n(rhs);
+      var a2=rc(4), b2=rc(4);
+      var c2=a2*s.x+b2*s.y;
+      if(!validLinear(a1,b1,c1p,a2,b2,c2,s.x,s.y,cap)) continue;
+      if(Math.abs(rhs)>cap+10) continue;
+      return {kind:'linear',std:{a1:a1,b1:b1,c1:c1p,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+              html:systemHTML(l1,eqStr(a2,b2,c2)),
+              pre:[{lb:'かっこを外して整理する',
+                    bd:systemHTML(eqStr(a1,b1,c1p),eqStr(a2,b2,c2))}]};
+    }else{
+      /* a1x + m(y + q) の形 */
+      a1=rc(4);
+      var m=pick([-1,-1,-1,2,3,-2]);
+      var q=rc(5);
+      var c1q=a1*s.x+m*s.y;
+      var rhsq=c1q+m*q;
+      var innerY=Y+(q<0?' − ':' + ')+Math.abs(q);
+      var mid=(m===1)?'('+innerY+')':(m===-1)?'−('+innerY+')':(m<0?'−':'')+Math.abs(m)+'('+innerY+')';
+      l1=coefTerm(a1,X)+(mid.charAt(0)==='−'?' − '+mid.slice(1):' + '+mid)+' = '+n(rhsq);
+      var a2b=rc(4), b2b=rc(4);
+      var c2b=a2b*s.x+b2b*s.y;
+      if(!validLinear(a1,m,c1q,a2b,b2b,c2b,s.x,s.y,cap)) continue;
+      if(Math.abs(rhsq)>cap+10) continue;
+      return {kind:'linear',std:{a1:a1,b1:m,c1:c1q,a2:a2b,b2:b2b,c2:c2b},x:s.x,y:s.y,
+              html:systemHTML(l1,eqStr(a2b,b2b,c2b)),
+              pre:[{lb:'かっこを外して整理する',
+                    bd:systemHTML(eqStr(a1,m,c1q),eqStr(a2b,b2b,c2b))}]};
+    }
+  }
+  return genL2();
+}
+
+/* --- Level 3-B / 特訓：ax = by → x : y --- */
+function genRatio(){
+  var a,b,guard=0;
+  do{ a=randInt(2,9); b=randInt(2,9); guard++; }while(a===b&&guard<50);
+  var g=gcd(a,b);
+  var zeroForm=Math.random()<0.35;
+  var q;
+  if(zeroForm){
+    q=coefTerm(a,X)+joinTerm(-b,Y)+' = 0 のとき、'+X+' : '+Y+' を最も簡単な整数の比で表しなさい。';
+  }else{
+    q=coefTerm(a,X)+' = '+coefTerm(b,Y)+' のとき、'+X+' : '+Y+' を最も簡単な整数の比で表しなさい。';
+  }
+  return {kind:'ratio',a:a,b:b,zeroForm:zeroForm,rx:b/g,ry:a/g,
+          html:'<div class="qtext">'+q+'</div>'};
+}
+
+/* --- Level 4-A：分数（分母をはらう） --- */
+function genFrac(){
+  for(var i=0;i<800;i++){
+    var md=pick([2,3,4,5,6]), nd=pick([2,3,4,5,6]);
+    if(md===nd) continue;
+    var sgn=pick([1,-1]);
+    var sv=rc(4), tv=rc(4);
+    var x=md*sv, y=nd*tv;
+    if(Math.abs(x)>12||Math.abs(y)>12) continue;
+    var k=sv+sgn*tv;
+    if(Math.abs(k)>8) continue;
+    var L=lcm(md,nd), a1=L/md, b1=sgn*(L/nd), c1=L*k;
+    var a2=rc(3), b2=rc(3);
+    var c2=a2*x+b2*y;
+    if(Math.abs(c2)>45) continue;
+    if(!validLinear(a1,b1,c1,a2,b2,c2,x,y,60)) continue;
+    var l1=frac(X,md)+' '+(sgn>0?'+':'−')+' '+frac(Y,nd)+' = '+n(k);
+    return {kind:'linear',std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:x,y:y,
+            html:systemHTML(l1,eqStr(a2,b2,c2)),
+            pre:[{lb:'①の両辺に '+L+' をかけて分母をはらう',
+                  bd:systemHTML(eqStr(a1,b1,c1),eqStr(a2,b2,c2))}]};
+  }
+  return genL2();
+}
+
+/* --- Level 4-B：小数（10倍する） --- */
+function genDec(){
+  for(var i=0;i<800;i++){
+    var s=genSolution(9);
+    var A=randInt(1,9), B=rc(9);
+    var num=A*s.x+B*s.y;              /* = 定数項×10 */
+    if(Math.abs(num)>60) continue;
+    var a2=rc(4), b2=rc(4);
+    var c2=a2*s.x+b2*s.y;
+    if(!validLinear(A,B,num,a2,b2,c2,s.x,s.y,60)) continue;
+    var dec=(num/10).toFixed(1).replace('-','−');
+    var l1='0.'+A+X+' '+(B<0?'−':'+')+' 0.'+Math.abs(B)+Y+' = '+dec;
+    return {kind:'linear',std:{a1:A,b1:B,c1:num,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+            html:systemHTML(l1,eqStr(a2,b2,c2)),
+            pre:[{lb:'①の両辺を 10 倍して小数をなくす',
+                  bd:systemHTML(eqStr(A,B,num),eqStr(a2,b2,c2))}]};
+  }
+  return genL2();
+}
+
+function genByLevel(lv){
+  if(lv===1) return genL1();
+  if(lv===2) return genL2();
+  if(lv===3) return (Math.random()<0.4)?genRatio():genParen(50);
+  var r=Math.random();
+  if(r<0.4) return genFrac();
+  if(r<0.7) return genDec();
+  return genParen(60);
+}
+
+/* ============================================================
+   解説（途中式）の自動生成
+   ============================================================ */
+function linearSteps(p){
+  var S=p.std, a1=S.a1,b1=S.b1,c1=S.c1,a2=S.a2,b2=S.b2,c2=S.c2;
+  var steps=[];
+  if(p.pre) for(var i=0;i<p.pre.length;i++) steps.push(p.pre[i]);
+
+  var useY=lcm(b1,b2)<=lcm(a1,a2);
+  var L=useY?lcm(b1,b2):lcm(a1,a2);
+  var m1=useY?L/Math.abs(b1):L/Math.abs(a1);
+  var m2=useY?L/Math.abs(b2):L/Math.abs(a2);
+  var vH=useY?Y:X;
+
+  var A1=a1*m1,B1=b1*m1,C1=c1*m1;
+  var A2=a2*m2,B2=b2*m2,C2=c2*m2;
+
+  if(m1!==1||m2!==1){
+    var ps=[];
+    if(m1!==1) ps.push('①を '+m1+' 倍');
+    if(m2!==1) ps.push('②を '+m2+' 倍');
+    steps.push({lb:ps.join('、')+'して、'+vH+' の係数の絶対値をそろえる',
+                bd:systemHTML(eqStr(A1,B1,C1),eqStr(A2,B2,C2))});
+  }
+
+  var k1=useY?B1:A1, k2=useY?B2:A2;
+  var same=(k1>0)===(k2>0);
+  var A=same?A1-A2:A1+A2;
+  var B=same?B1-B2:B1+B2;
+  var C=same?C1-C2:C1+C2;
+  var coef=useY?A:B;
+  var remH=useY?X:Y;
+  var remV=useY?p.x:p.y;
+
+  steps.push({
+    lb:vH+' の係数の符号が'+(same?'同じ':'ちがう')+'ので、'+(same?'辺々を引く（①−②）':'辺々を足す（①＋②）')+'と '+vH+' が消える',
+    bd:lineHTML(coefTerm(coef,remH)+' = '+n(C))+
+       lineHTML('両辺を '+n(coef)+' でわって　'+remH+' = <b>'+n(remV)+'</b>')
+  });
+
+  var bd='';
+  if(useY){
+    var pr=a1*p.x;
+    bd+=lineHTML('①に '+X+' = '+n(p.x)+' を代入');
+    bd+=lineHTML(n(a1)+'×('+n(p.x)+')'+joinTerm(b1,Y)+' = '+n(c1));
+    bd+=lineHTML(n(pr)+joinTerm(b1,Y)+' = '+n(c1));
+    bd+=lineHTML(coefTerm(b1,Y)+' = '+n(c1-pr));
+    bd+=lineHTML(Y+' = <b>'+n(p.y)+'</b>');
+  }else{
+    var pr2=b1*p.y;
+    bd+=lineHTML('①に '+Y+' = '+n(p.y)+' を代入');
+    bd+=lineHTML(coefTerm(a1,X)+(b1<0?' − ':' + ')+Math.abs(b1)+'×('+n(p.y)+') = '+n(c1));
+    bd+=lineHTML(coefTerm(a1,X)+(pr2<0?' − ':' + ')+Math.abs(pr2)+' = '+n(c1));
+    bd+=lineHTML(coefTerm(a1,X)+' = '+n(c1-pr2));
+    bd+=lineHTML(X+' = <b>'+n(p.x)+'</b>');
+  }
+  steps.push({lb:'もう一方の文字を求める',bd:bd});
+
+  steps.push({lb:'答え',bd:lineHTML('<b>'+X+' = '+n(p.x)+' 、 '+Y+' = '+n(p.y)+'</b>')});
+  return steps;
+}
+
+function ratioSteps(p){
+  var a=p.a,b=p.b,g=gcd(a,b),steps=[];
+  if(p.zeroForm){
+    steps.push({lb:'まず '+coefTerm(b,Y)+' を右辺に移す',
+                bd:lineHTML(coefTerm(a,X)+joinTerm(-b,Y)+' = 0')+
+                   lineHTML(coefTerm(a,X)+' = '+coefTerm(b,Y))});
+  }
+  steps.push({lb:X+' について解く',
+              bd:lineHTML(coefTerm(a,X)+' = '+coefTerm(b,Y))+
+                 lineHTML('両辺を '+a+' でわって　'+X+' = '+frac(b,a)+Y)});
+  steps.push({lb:'比になおす',
+              bd:lineHTML(X+' : '+Y+' = '+frac(b,a)+Y+' : '+Y+' = '+b+' : '+a)+
+                 lineHTML((g>1?'約分して　':'')+'<b>'+X+' : '+Y+' = '+p.rx+' : '+p.ry+'</b>')});
+  steps.push({lb:'⚠ ここが引っかかりポイント',
+              bd:'<div class="warn">係数の <b>'+a+'</b> と <b>'+b+'</b> を、そのまま並べて '+a+' : '+b+
+                 ' としてしまうのがよくある誤りです。<br>'+X+' : '+Y+' では係数が<b>入れかわって</b> '+b+' : '+a+
+                 ' になります。</div>'});
+  steps.push({lb:'確かめ',
+              bd:lineHTML(X+' = '+p.rx+' 、 '+Y+' = '+p.ry+' を代入')+
+                 lineHTML(a+' × '+p.rx+' = '+(a*p.rx)+' 、 '+b+' × '+p.ry+' = '+(b*p.ry)+'　→ 両辺が等しい ✓')});
+  return steps;
+}
+
+/* ============================================================
+   レベル管理（直近10問のスライディングウィンドウ）
+   昇格 9〜10 / 維持 6〜8 / 降格 0〜5、レベル変更時はウィンドウをリセット
+   ============================================================ */
+var LV_NAME={1:'基礎',2:'標準',3:'弱点特訓',4:'実戦'};
+var HINTS={
+  1:'どちらかの文字の係数がそろっています。そのまま<b>足すか引く</b>だけで文字が1つ消えます。',
+  2:'係数がそろっていません。<b>最小公倍数</b>を考えて、片方または両方を何倍かしてから足し引きします。',
+  3:'かっこは<b>先に外して</b>から整理。とくに <b>−( )</b> は中身すべての符号が変わります。<br>比の問題は、係数がそのまま並ぶのではなく<b>入れかわる</b>ことに注意。',
+  4:'分数は<b>分母の最小公倍数</b>を両辺にかけて、小数は<b>10倍・100倍</b>して、まず整数の式に直します。'
+};
+var KEY='renritsu-drill-v1';
+var st={level:1,win:[],total:0,ok:0,mode:'level'};
+
+function load(){
+  try{
+    var raw=localStorage.getItem(KEY);
+    if(!raw) return;
+    var o=JSON.parse(raw);
+    if(o&&o.level>=1&&o.level<=4){
+      st.level=o.level;
+      st.win=Array.isArray(o.win)?o.win.slice(-10):[];
+      st.total=o.total||0; st.ok=o.ok||0;
+    }
+  }catch(e){}
+}
+function save(){
+  try{ localStorage.setItem(KEY,JSON.stringify({level:st.level,win:st.win,total:st.total,ok:st.ok})); }catch(e){}
+}
+
+function record(correct){
+  st.total++; if(correct) st.ok++;
+  if(st.mode==='ratio'){ save(); return ''; }
+  st.win.push(correct);
+  var note='';
+  if(st.win.length>=10){
+    var c=0;
+    for(var i=0;i<st.win.length;i++) if(st.win[i]) c++;
+    if(c>=9){
+      if(st.level<4){ st.level++; st.win=[]; note='🎉 レベルアップ！ Level '+st.level+' へ'; }
+      else{ st.win=[]; note='🏆 Level 4 を維持中。この調子！'; }
+    }else if(c<=5){
+      if(st.level>1){ st.level--; st.win=[]; note='📘 Level '+st.level+' に戻って基礎固めをしよう'; }
+      else{ st.win=[]; note='📘 Level 1 でもう少し練習しよう'; }
+    }else{
+      st.win.shift();
+    }
+  }
+  save();
+  return note;
+}
+
+/* ============================================================
+   画面
+   ============================================================ */
+var $=function(id){return document.getElementById(id);};
+var qbox=$('qbox'), result=$('result'), sol=$('sol'), solBody=$('sol-body');
+var btnCheck=$('btn-check'), btnNext=$('btn-next'), btnSol=$('btn-sol');
+var ansXY=$('ans-xy'), ansRatio=$('ans-ratio');
+var inX=$('in-x'), inY=$('in-y'), inRX=$('in-rx'), inRY=$('in-ry');
+var cur=null, answered=false, pendingNote='';
+
+function renderStatus(){
+  if(st.mode==='ratio'){
+    $('lv').innerHTML='比 特訓<small>レベル判定なし</small>';
+  }else{
+    $('lv').innerHTML='Level '+st.level+'<small>'+LV_NAME[st.level]+'</small>';
+  }
+  var w=$('win'); w.innerHTML='';
+  for(var i=0;i<10;i++){
+    var e=document.createElement('i');
+    if(i<st.win.length) e.className=st.win[i]?'o':'x';
+    w.appendChild(e);
+  }
+  var c=0; for(var j=0;j<st.win.length;j++) if(st.win[j]) c++;
+  var base=(st.mode==='ratio')
+    ? '比の変換だけを練習中'
+    : '直近 '+st.win.length+'/10 問中 '+c+' 問正解';
+  $('msg').innerHTML=pendingNote?('<b style="color:#1d4ed8">'+pendingNote+'</b>'):base;
+  $('hint-text').innerHTML=(st.mode==='ratio')?HINTS[3]:HINTS[st.level];
+}
+
+function newProblem(){
+  cur=(st.mode==='ratio')?genRatio():genByLevel(st.level);
+  answered=false;
+  qbox.innerHTML=cur.html;
+  qbox.className='qbox math';
+  var isRatio=(cur.kind==='ratio');
+  ansXY.style.display=isRatio?'none':'flex';
+  ansRatio.style.display=isRatio?'flex':'none';
+  inX.value=''; inY.value=''; inRX.value=''; inRY.value='';
+  result.style.display='none';
+  sol.className='sol'; solBody.innerHTML='';
+  btnSol.style.display='none';
+  btnCheck.style.display='block'; btnCheck.disabled=false;
+  btnNext.style.display='none';
+  renderStatus();
+}
+
+function renderSteps(steps){
+  var h='';
+  for(var i=0;i<steps.length;i++){
+    h+='<div class="step"><div class="lb">'+(i+1)+'. '+steps[i].lb+'</div><div class="bd">'+steps[i].bd+'</div></div>';
+  }
+  solBody.innerHTML=h;
+}
+
+function check(){
+  if(answered||!cur) return;
+  var correct=false, msg='';
+
+  if(cur.kind==='ratio'){
+    var rx=parseInt(inRX.value,10), ry=parseInt(inRY.value,10);
+    if(isNaN(rx)||isNaN(ry)){ flashEmpty(); return; }
+    if(rx<=0||ry<=0){
+      msg='❌ 比は正の整数で答えよう。';
+    }else if(rx===cur.rx&&ry===cur.ry){
+      correct=true;
+    }else if(rx*cur.ry===ry*cur.rx){
+      msg='△ 比としては合っていますが、<b>最も簡単な整数の比</b>にしよう（正解は '+cur.rx+' : '+cur.ry+'）';
+    }else{
+      msg='❌ おしい！正解は '+cur.rx+' : '+cur.ry;
+    }
+  }else{
+    var ux=parseInt(inX.value,10), uy=parseInt(inY.value,10);
+    if(isNaN(ux)||isNaN(uy)){ flashEmpty(); return; }
+    if(ux===cur.x&&uy===cur.y) correct=true;
+    else msg='❌ おしい！正解は x = '+cur.x+' 、 y = '+cur.y;
+  }
+
+  answered=true;
+  pendingNote=record(correct);
+
+  result.style.display='block';
+  result.className='result '+(correct?'ok':'ng');
+  result.innerHTML=correct?'🎉 正解！すばらしい！':msg;
+
+  renderSteps(cur.kind==='ratio'?ratioSteps(cur):linearSteps(cur));
+  if(correct){
+    btnSol.style.display='block';
+    btnSol.textContent='解き方を見る';
+  }else{
+    /* 間違えたときは自動で解説を開く */
+    btnSol.style.display='block';
+    btnSol.textContent='解き方を閉じる';
+    sol.className='sol show';
+  }
+  btnCheck.style.display='none';
+  btnNext.style.display='block';
+  renderStatus();
+  pendingNote='';
+}
+
+function flashEmpty(){
+  result.style.display='block';
+  result.className='result ng';
+  result.innerHTML='答えを入力してください。';
+}
+
+btnCheck.addEventListener('click',check);
+btnNext.addEventListener('click',newProblem);
+$('btn-skip').addEventListener('click',newProblem);
+btnSol.addEventListener('click',function(){
+  var open=sol.className.indexOf('show')>=0;
+  sol.className=open?'sol':'sol show';
+  btnSol.textContent=open?'解き方を見る':'解き方を閉じる';
+});
+$('btn-ratio-mode').addEventListener('click',function(){
+  st.mode=(st.mode==='ratio')?'level':'ratio';
+  this.className='btn btn-g'+(st.mode==='ratio'?' on':'');
+  this.textContent=(st.mode==='ratio')?'レベル出題に戻す':'比だけ特訓';
+  newProblem();
+});
+$('btn-reset').addEventListener('click',function(){
+  if(!window.confirm('レベルと進捗をリセットします。よろしいですか？')) return;
+  st.level=1; st.win=[]; st.total=0; st.ok=0; save(); newProblem();
+});
+
+[inX,inY,inRX,inRY].forEach(function(el){
+  el.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){ e.preventDefault(); answered?newProblem():check(); }
+  });
+});
+
+/* ============================================================
+   手書きメモ（Canvas）
+   - Pointer Events で Apple Pencil / 指の両対応
+   - ペン使用中は指入力を無視（パームリジェクション）
+   - devicePixelRatio 対応でにじみを解消
+   - 画面回転・リサイズでも描いた内容を保持
+   ============================================================ */
+var canvas=$('canvas'), ctx=canvas.getContext('2d');
+var wrap=canvas.parentElement;
+var cssW=0, cssH=0;
+
+function penStyle(){
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.strokeStyle='#1e293b'; ctx.lineWidth=2.2;
+}
+function resizeCanvas(){
+  var r=wrap.getBoundingClientRect();
+  var dpr=window.devicePixelRatio||1;
+  var nw=Math.max(1,Math.floor(r.width)), nh=Math.max(1,Math.floor(r.height));
+  if(nw===cssW&&nh===cssH&&canvas.width===Math.round(nw*dpr)) return;
+
+  var snap=null;
+  if(canvas.width>0&&canvas.height>0&&cssW>0){
+    snap=document.createElement('canvas');
+    snap.width=canvas.width; snap.height=canvas.height;
+    snap.getContext('2d').drawImage(canvas,0,0);
+  }
+  var oldW=cssW, oldH=cssH;
+
+  canvas.width=Math.round(nw*dpr);
+  canvas.height=Math.round(nh*dpr);
+  canvas.style.width=nw+'px';
+  canvas.style.height=nh+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  penStyle();
+
+  if(snap&&oldW>0&&oldH>0) ctx.drawImage(snap,0,0,oldW,oldH);
+  cssW=nw; cssH=nh;
+}
+
+var drawing=false, activeId=null, lastPen=-1e9;
+function pos(e){
+  var r=canvas.getBoundingClientRect();
+  return {x:e.clientX-r.left, y:e.clientY-r.top};
+}
+canvas.addEventListener('pointerdown',function(e){
+  if(e.pointerType==='pen') lastPen=performance.now();
+  else if(e.pointerType==='touch'&&performance.now()-lastPen<1500) return; /* 手のひら誤爆を防ぐ */
+  if(e.pointerType==='mouse'&&e.button!==0) return;
+  e.preventDefault();
+  activeId=e.pointerId; drawing=true;
+  try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+  var p=pos(e);
+  ctx.beginPath(); ctx.moveTo(p.x,p.y);
+  ctx.lineTo(p.x+0.01,p.y+0.01); ctx.stroke();   /* 点だけのタップも描画 */
+},{passive:false});
+
+canvas.addEventListener('pointermove',function(e){
+  if(!drawing||e.pointerId!==activeId) return;
+  if(e.pointerType==='pen') lastPen=performance.now();
+  e.preventDefault();
+  var evts=(e.getCoalescedEvents?e.getCoalescedEvents():null)||[e];
+  for(var i=0;i<evts.length;i++){
+    var p=pos(evts[i]);
+    ctx.lineTo(p.x,p.y);
+  }
+  ctx.stroke();
+},{passive:false});
+
+function endStroke(e){
+  if(e.pointerId!==activeId) return;
+  drawing=false; activeId=null;
+  ctx.beginPath();
+}
+canvas.addEventListener('pointerup',endStroke);
+canvas.addEventListener('pointercancel',endStroke);
+canvas.addEventListener('pointerleave',endStroke);
+
+$('btn-clear').addEventListener('click',function(){
+  ctx.save();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.restore();
+  penStyle();
+});
+
+if(window.ResizeObserver){
+  new ResizeObserver(resizeCanvas).observe(wrap);
+}
+window.addEventListener('resize',resizeCanvas);
+window.addEventListener('orientationchange',function(){ setTimeout(resizeCanvas,300); });
+
+/* ============================================================
+   起動
+   ============================================================ */
+load();
+resizeCanvas();
+newProblem();
+
+/* Service Worker（オフライン動作。file:// では登録できないので握りつぶす） */
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+
+})();
+</script>
+</body>
+</html>
