@@ -107,16 +107,12 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
 .ratio-sep{font-size:22px;font-weight:700;color:var(--sub)}
 
 /* ===== テンキー ===== */
-.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
-.pad button{height:54px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;
-  font-size:23px;font-weight:700;color:var(--ink);transition:transform .06s,background .12s;
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
+.pad button{height:58px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;
+  font-size:25px;font-weight:700;color:var(--ink);transition:transform .06s,background .12s;
   -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .pad button:active{transform:scale(.94);background:#e2e8f0}
-.pad .k-zero{grid-column:span 3}
-.pad .k-next{grid-row:span 2;background:#eff6ff;border-color:#bfdbfe;color:var(--blue-d);
-  font-size:14px;line-height:1.5}
-.pad .k-next:active{background:#dbeafe}
-.pad .k-c{background:#fef2f2;border-color:#fecaca;color:#b91c1c;font-size:20px}
+.pad .k-c{background:#fef2f2;border-color:#fecaca;color:#b91c1c;font-size:22px}
 .pad .k-c:active{background:#fee2e2}
 .pad .k-minus{background:#fffbeb;border-color:#fde68a;color:#92400e;font-size:28px}
 .pad .k-minus:active{background:#fef3c7}
@@ -205,16 +201,15 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
         <button type="button" data-k="7">7</button>
         <button type="button" data-k="8">8</button>
         <button type="button" data-k="9">9</button>
-        <button type="button" data-k="C" class="k-c">C</button>
         <button type="button" data-k="4">4</button>
         <button type="button" data-k="5">5</button>
         <button type="button" data-k="6">6</button>
-        <button type="button" data-k="-" class="k-minus" id="k-minus">−</button>
         <button type="button" data-k="1">1</button>
         <button type="button" data-k="2">2</button>
         <button type="button" data-k="3">3</button>
-        <button type="button" data-k="N" class="k-next" id="k-next">次へ<br>→</button>
-        <button type="button" data-k="0" class="k-zero">0</button>
+        <button type="button" data-k="-" class="k-minus" id="k-minus">−</button>
+        <button type="button" data-k="0">0</button>
+        <button type="button" data-k="C" class="k-c">C</button>
       </div>
 
       <button class="btn-check" id="btn-check" type="button">答え合わせ</button>
@@ -647,7 +642,7 @@ function renderStatus(){
      （テンキーを押すと blur されるため、フォーカスは当てにできない）
    - マイナスは一方向（押すと符号がマイナスになる。戻すときは C）
    ============================================================ */
-var pad=$('pad'), kMinus=$('k-minus'), kNext=$('k-next');
+var pad=$('pad'), kMinus=$('k-minus');
 var curField=null;
 var FIELDS={ xy:[inX,inY], ratio:[inRX,inRY] };
 
