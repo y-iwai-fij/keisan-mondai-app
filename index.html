@@ -619,6 +619,7 @@ function renderStatus(){
 }
 
 function newProblem(){
+  clearPad();                      /* 次の問題に進んだら手書きメモを自動で消す */
   cur=(st.mode==='ratio')?genRatio():genByLevel(st.level);
   answered=false;
   qbox.innerHTML=cur.html;
@@ -820,13 +821,17 @@ canvas.addEventListener('pointerup',endStroke);
 canvas.addEventListener('pointercancel',endStroke);
 canvas.addEventListener('pointerleave',endStroke);
 
-$('btn-clear').addEventListener('click',function(){
+function clearPad(){
+  if(!ctx||!canvas.width) return;
+  drawing=false; activeId=null;
   ctx.save();
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.restore();
+  ctx.beginPath();
   penStyle();
-});
+}
+$('btn-clear').addEventListener('click',clearPad);
 
 if(window.ResizeObserver){
   new ResizeObserver(resizeCanvas).observe(wrap);
