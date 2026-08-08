@@ -99,9 +99,28 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
 .ansrow .fld{flex:1;display:flex;align-items:center;gap:8px}
 .ansrow label{font-family:"Times New Roman",Times,serif;font-style:italic;font-size:21px;white-space:nowrap}
 .ansrow input{width:100%;min-width:0;border:2px solid var(--line);border-radius:10px;padding:10px;
-  text-align:center;font-size:21px;outline:none;background:#fff;color:var(--ink)}
-.ansrow input:focus{border-color:var(--blue)}
+  text-align:center;font-size:22px;font-weight:700;outline:none;background:#fff;color:var(--ink);
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:pointer}
+/* 入力先の欄。readonly でフォーカス枠が出ないので自前で示す */
+.ansrow input.active{border-color:var(--blue);background:#eff6ff;
+  box-shadow:0 0 0 3px rgba(37,99,235,.16)}
 .ratio-sep{font-size:22px;font-weight:700;color:var(--sub)}
+
+/* ===== テンキー ===== */
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.pad button{height:54px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;
+  font-size:23px;font-weight:700;color:var(--ink);transition:transform .06s,background .12s;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.pad button:active{transform:scale(.94);background:#e2e8f0}
+.pad .k-zero{grid-column:span 3}
+.pad .k-next{grid-row:span 2;background:#eff6ff;border-color:#bfdbfe;color:var(--blue-d);
+  font-size:14px;line-height:1.5}
+.pad .k-next:active{background:#dbeafe}
+.pad .k-c{background:#fef2f2;border-color:#fecaca;color:#b91c1c;font-size:20px}
+.pad .k-c:active{background:#fee2e2}
+.pad .k-minus{background:#fffbeb;border-color:#fde68a;color:#92400e;font-size:28px}
+.pad .k-minus:active{background:#fef3c7}
+.pad button.off{opacity:.32;pointer-events:none}
 
 .btn-check{width:100%;background:var(--orange);color:#fff;padding:14px;border-radius:14px;
   font-size:17px;font-weight:800;box-shadow:0 4px 12px rgba(234,88,12,.3)}
@@ -130,10 +149,6 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
   border-radius:8px;padding:8px 10px}
 .sol-toggle{width:100%;margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:9px;
   font-size:13px;font-weight:700;color:var(--sub);background:#f8fafc}
-
-.hint{background:#eff6ff;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px}
-.hint h3{font-size:13px;font-weight:800;color:#1e40af;margin-bottom:5px}
-.hint p{font-size:12.5px;line-height:1.75;color:#1d4ed8}
 
 /* ===== canvas ===== */
 .pad-label{position:absolute;top:8px;left:14px;color:#cbd5e1;font-size:12px;pointer-events:none;z-index:1}
@@ -172,16 +187,34 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
 
       <h2 style="margin-top:16px">答えを入力</h2>
 
+      <!-- 入力欄は readonly。iOS ではソフトキーボードが出ないため、
+           値はすべて下のテンキーから入れる -->
       <div class="ansrow" id="ans-xy">
-        <div class="fld"><label>x =</label><input type="number" id="in-x" inputmode="numeric" pattern="-?[0-9]*" enterkeyhint="done"></div>
-        <div class="fld"><label>y =</label><input type="number" id="in-y" inputmode="numeric" pattern="-?[0-9]*" enterkeyhint="done"></div>
+        <div class="fld"><label>x =</label><input type="text" id="in-x" readonly></div>
+        <div class="fld"><label>y =</label><input type="text" id="in-y" readonly></div>
       </div>
 
       <div class="ansrow" id="ans-ratio" style="display:none">
         <label style="white-space:nowrap">x : y =</label>
-        <input type="number" id="in-rx" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" style="flex:1">
+        <input type="text" id="in-rx" readonly style="flex:1">
         <span class="ratio-sep">:</span>
-        <input type="number" id="in-ry" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" style="flex:1">
+        <input type="text" id="in-ry" readonly style="flex:1">
+      </div>
+
+      <div class="pad" id="pad">
+        <button type="button" data-k="7">7</button>
+        <button type="button" data-k="8">8</button>
+        <button type="button" data-k="9">9</button>
+        <button type="button" data-k="C" class="k-c">C</button>
+        <button type="button" data-k="4">4</button>
+        <button type="button" data-k="5">5</button>
+        <button type="button" data-k="6">6</button>
+        <button type="button" data-k="-" class="k-minus" id="k-minus">−</button>
+        <button type="button" data-k="1">1</button>
+        <button type="button" data-k="2">2</button>
+        <button type="button" data-k="3">3</button>
+        <button type="button" data-k="N" class="k-next" id="k-next">次へ<br>→</button>
+        <button type="button" data-k="0" class="k-zero">0</button>
       </div>
 
       <button class="btn-check" id="btn-check" type="button">答え合わせ</button>
@@ -192,10 +225,6 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
       <div class="sol" id="sol"><h3>解き方</h3><div id="sol-body"></div></div>
     </div>
 
-    <div class="hint">
-      <h3>💡 ヒント</h3>
-      <p id="hint-text"></p>
-    </div>
   </div>
 
   <div class="right">
@@ -541,12 +570,6 @@ function ratioSteps(p){
    昇格 9〜10 / 維持 6〜8 / 降格 0〜5、レベル変更時はウィンドウをリセット
    ============================================================ */
 var LV_NAME={1:'基礎',2:'標準',3:'弱点特訓',4:'実戦'};
-var HINTS={
-  1:'どちらかの文字の係数がそろっています。そのまま<b>足すか引く</b>だけで文字が1つ消えます。',
-  2:'係数がそろっていません。<b>最小公倍数</b>を考えて、片方または両方を何倍かしてから足し引きします。',
-  3:'かっこは<b>先に外して</b>から整理。とくに <b>−( )</b> は中身すべての符号が変わります。<br>比の問題は、係数がそのまま並ぶのではなく<b>入れかわる</b>ことに注意。',
-  4:'分数は<b>分母の最小公倍数</b>を両辺にかけて、小数は<b>10倍・100倍</b>して、まず整数の式に直します。'
-};
 var KEY='renritsu-drill-v1';
 var st={level:1,win:[],total:0,ok:0,mode:'level'};
 
@@ -615,8 +638,52 @@ function renderStatus(){
     ? '比の変換だけを練習中'
     : '直近 '+st.win.length+'/10 問中 '+c+' 問正解';
   $('msg').innerHTML=pendingNote?('<b style="color:#1d4ed8">'+pendingNote+'</b>'):base;
-  $('hint-text').innerHTML=(st.mode==='ratio')?HINTS[3]:HINTS[st.level];
 }
+
+/* ============================================================
+   テンキー入力
+   - 入力欄は readonly なのでソフトキーボードは出ない
+   - 「選択中の欄」は DOM のフォーカスではなく curField で管理する
+     （テンキーを押すと blur されるため、フォーカスは当てにできない）
+   - マイナスは一方向（押すと符号がマイナスになる。戻すときは C）
+   ============================================================ */
+var pad=$('pad'), kMinus=$('k-minus'), kNext=$('k-next');
+var curField=null;
+var FIELDS={ xy:[inX,inY], ratio:[inRX,inRY] };
+
+function fieldSet(){ return (cur&&cur.kind==='ratio')?FIELDS.ratio:FIELDS.xy; }
+
+function setField(el){
+  /* 4欄すべてを対象に消す。現在のモードの2欄だけだと、
+     モードを切り替えたとき隠れた欄に選択状態が残る */
+  var all=FIELDS.xy.concat(FIELDS.ratio);
+  for(var i=0;i<all.length;i++) all[i].className=(all[i]===el)?'active':'';
+  curField=el;
+}
+function digitsOf(v){ return (v.charAt(0)==='-')?v.slice(1):v; }
+
+function padPress(k){
+  if(answered||!curField) return;
+  var v=curField.value;
+  if(k==='C'){ curField.value=''; return; }
+  if(k==='N'){ var f=fieldSet(); setField(curField===f[0]?f[1]:f[0]); return; }
+  if(k==='-'){
+    if(cur&&cur.kind==='ratio') return;      /* 比に負の数は使わない */
+    if(v.charAt(0)!=='-') curField.value='-'+v;
+    return;
+  }
+  var d=digitsOf(v);
+  if(d.length>=2) return;                    /* 答えは2桁までで足りる */
+  curField.value=(v.charAt(0)==='-'?'-':'')+d+k;
+}
+
+pad.addEventListener('click',function(e){
+  var b=e.target.closest?e.target.closest('button[data-k]'):null;
+  if(b) padPress(b.getAttribute('data-k'));
+});
+[inX,inY,inRX,inRY].forEach(function(el){
+  el.addEventListener('pointerdown',function(){ if(!answered) setField(el); });
+});
 
 function newProblem(){
   clearPad();                      /* 次の問題に進んだら手書きメモを自動で消す */
@@ -633,6 +700,10 @@ function newProblem(){
   btnSol.style.display='none';
   btnCheck.style.display='block'; btnCheck.disabled=false;
   btnNext.style.display='none';
+  /* テンキーを出し、左の欄を選択状態にして打ち始められるようにする */
+  pad.style.display='grid';
+  kMinus.className='k-minus'+(isRatio?' off':'');   /* 比では負の数を使わない */
+  setField(fieldSet()[0]);
   renderStatus();
 }
 
@@ -669,6 +740,10 @@ function check(){
 
   answered=true;
   pendingNote=record(correct);
+
+  /* 採点したらテンキーを片づけて、解説に縦の場所を譲る */
+  pad.style.display='none';
+  setField(null);
 
   result.style.display='block';
   result.className='result '+(correct?'ok':'ng');
@@ -729,18 +804,17 @@ $('btn-reset').addEventListener('click',function(){
   st.level=1; st.win=[]; st.total=0; st.ok=0; save(); newProblem();
 });
 
-[inX,inY,inRX,inRY].forEach(function(el){
-  /* Return（完了）で答え合わせ → そのままキーボードを閉じる */
-  el.addEventListener('keydown',function(e){
-    if(e.key==='Enter'){ e.preventDefault(); el.blur(); answered?newProblem():check(); }
-  });
-  /* キーボードで入力欄が隠れないよう、表示されてから画面中央に寄せる */
-  el.addEventListener('focus',function(){
-    setTimeout(function(){
-      try{ el.scrollIntoView({block:'center',behavior:'smooth'}); }
-      catch(err){ el.scrollIntoView(); }
-    },350);
-  });
+/* 外付けキーボードがつながっている場合の補助（iPad単体では使わない） */
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){ e.preventDefault(); answered?newProblem():check(); return; }
+  if(answered) return;
+  if(e.key>='0'&&e.key<='9') padPress(e.key);
+  else if(e.key==='-') padPress('-');
+  else if(e.key==='Escape'||e.key==='Delete') padPress('C');
+  else if(e.key==='Tab'){ e.preventDefault(); padPress('N'); }
+  else if(e.key==='Backspace'){
+    if(curField) curField.value=curField.value.slice(0,-1);
+  }
 });
 
 /* ============================================================

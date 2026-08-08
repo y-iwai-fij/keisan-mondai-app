@@ -2,7 +2,7 @@
    ネットワーク優先・失敗時キャッシュ（network first, cache fallback）
    → 更新は自動で反映され、オフラインでも起動できる。
    本体を更新したら CACHE の版番号を上げること。 */
-var CACHE = 'renritsu-drill-v3';
+var CACHE = 'renritsu-drill-v4';
 var ASSETS = [
   './',
   './index.html',
