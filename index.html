@@ -90,6 +90,17 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
 .brace{font-size:56px;color:#cbd5e1;line-height:.9;font-weight:300}
 .eqs>div{white-space:nowrap}
 .qtext{font-size:18px;line-height:1.75}
+/* A=B=C 型。1行に3項並ぶので少し小さく、それでも収まらなければ横スクロール */
+.abc{font-size:23px;white-space:nowrap;overflow-x:auto;max-width:100%;padding-bottom:2px}
+/* 701〜820px は左カラムが 330px に縮むのに 2カラムのまま。
+   ここだけ A=B=C がはみ出すので、さらに小さくして横スクロールを起こさない */
+@media (min-width:701px) and (max-width:820px){ .abc{font-size:19px} }
+/* 式と設問文を縦に積む入れもの。qbox が flex なので、包まないと横に並んでしまう */
+.qwrap{width:100%}
+/* 「〜のとき a, b の値を求めなさい」のような設問文（日本語なので明朝を使わない） */
+.qask{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  font-size:14px;line-height:1.7;color:var(--sub);margin-top:9px;white-space:normal}
+.qask b{color:var(--ink)}
 .frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 .2em;line-height:1.2;font-size:.92em}
 .frac>span:first-child{border-bottom:1.6px solid currentColor;padding:0 .28em}
 .frac>span:last-child{padding:0 .28em}
@@ -147,7 +158,20 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
   font-size:13px;font-weight:700;color:var(--sub);background:#f8fafc}
 
 /* ===== canvas ===== */
-.pad-label{position:absolute;top:8px;left:14px;color:#cbd5e1;font-size:12px;pointer-events:none;z-index:1}
+/* right:220px はメモ操作ボタンとの重なりを避けるため（狭い画面では末尾が省略される） */
+.pad-label{position:absolute;top:8px;left:14px;right:220px;color:#cbd5e1;font-size:12px;
+  pointer-events:none;z-index:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* メモの操作ボタンは「操作の対象」であるキャンバスの上に置く。
+   ヘッダーに置くと、隣のボタンと間違えて消してしまう事故が起きるため */
+.canvas-tools{position:absolute;top:8px;right:10px;z-index:2;display:flex;gap:8px}
+.ctool{border:1px solid var(--line);background:rgba(255,255,255,.92);border-radius:10px;
+  padding:7px 12px;font-size:13px;font-weight:700;color:var(--sub);
+  box-shadow:0 1px 3px rgba(15,23,42,.08);-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none}
+.ctool:active{background:#e2e8f0}
+/* 「元に戻す」は手動で消した直後だけ出す */
+.ctool.undo{display:none;color:var(--blue-d);border-color:#bfdbfe;background:#eff6ff}
+.ctool.undo.on{display:block}
 #canvas{
   display:block;width:100%;height:100%;touch-action:none;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
@@ -162,9 +186,10 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
 
 <header>
   <h1>連立方程式 練習ドリル</h1>
-  <div class="hdr-spacer"></div>
+  <!-- 「比だけ特訓」は出題モードの切り替え＝状態表示なのでタイトル側にまとめ、
+       右側の操作ボタン（スキップ）と役割を分ける -->
   <button class="btn btn-g" id="btn-ratio-mode" type="button">比だけ特訓</button>
-  <button class="btn btn-g" id="btn-clear" type="button">メモを消す</button>
+  <div class="hdr-spacer"></div>
   <button class="btn btn-w" id="btn-skip" type="button">スキップ</button>
 </header>
 
@@ -186,8 +211,9 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
       <!-- 入力欄は readonly。iOS ではソフトキーボードが出ないため、
            値はすべて下のテンキーから入れる -->
       <div class="ansrow" id="ans-xy">
-        <div class="fld"><label>x =</label><input type="text" id="in-x" readonly></div>
-        <div class="fld"><label>y =</label><input type="text" id="in-y" readonly></div>
+        <!-- ラベルは問題の種類で変わる（係数を求める型では a =, b = になる） -->
+        <div class="fld"><label id="lb-x">x =</label><input type="text" id="in-x" readonly></div>
+        <div class="fld"><label id="lb-y">y =</label><input type="text" id="in-y" readonly></div>
       </div>
 
       <div class="ansrow" id="ans-ratio" style="display:none">
@@ -223,7 +249,11 @@ main{flex:1;display:flex;gap:12px;padding:12px calc(12px + var(--safe-r)) calc(1
   </div>
 
   <div class="right">
-    <div class="pad-label">✍️ ここに計算をメモできます（Apple Pencil / 指）</div>
+    <div class="pad-label">✍️ 計算メモ（Apple Pencil / 指）</div>
+    <div class="canvas-tools">
+      <button class="ctool undo" id="btn-undo" type="button">↩ 元に戻す</button>
+      <button class="ctool" id="btn-clear" type="button">メモを消す</button>
+    </div>
     <canvas id="canvas"></canvas>
   </div>
 </main>
@@ -262,6 +292,8 @@ function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){var t=a%b;a=b;b=t;}return
 function lcm(a,b){return Math.abs(a*b)/gcd(a,b);}
 
 var X='<i>x</i>', Y='<i>y</i>';
+/* 係数を求める型では未知数が a, b になる */
+var VA='<i>a</i>', VB='<i>b</i>';
 
 /* 数値の表示（負号を数学用のマイナス記号にそろえる） */
 function n(v){ return v<0 ? '−'+Math.abs(v) : ''+v; }
@@ -277,7 +309,20 @@ function joinTerm(n,v){
   var a=Math.abs(n);
   return (n<0?' − ':' + ')+(a===1?v:a+v);
 }
-function eqStr(a,b,c){ return coefTerm(a,X)+joinTerm(b,Y)+' = '+n(c); }
+/* vx, vy を省略すると x, y。係数を求める型では a, b を渡す */
+function eqStr(a,b,c,vx,vy){ return coefTerm(a,vx||X)+joinTerm(b,vy||Y)+' = '+n(c); }
+/* m( inner ) の表示。first=true なら行頭の項として扱う */
+function parenTerm(m,inner,first){
+  var mag=Math.abs(m), body=(mag===1?'':''+mag)+'('+inner+')';
+  return first ? (m<0?'−':'')+body : (m<0?' − ':' + ')+body;
+}
+/* 式の末尾につく定数項（0 のときは何も出さない） */
+function constTail(k){ return k===0 ? '' : (k<0?' − ':' + ')+Math.abs(k); }
+/* 「2ax」「−by」のような、未知の係数×文字 の項 */
+function unknownTerm(m,uH,vH,first){
+  var mag=Math.abs(m), body=(mag===1?'':''+mag)+uH+vH;
+  return first ? (m<0?'−':'')+body : (m<0?' − ':' + ')+body;
+}
 function frac(n,d){ return '<span class="frac"><span>'+n+'</span><span>'+d+'</span></span>'; }
 function systemHTML(l1,l2){
   return '<div class="system"><span class="brace">{</span><div class="eqs"><div>'+l1+'</div><div>'+l2+'</div></div></div>';
@@ -324,14 +369,14 @@ function genL1(){
     var a1=pick([1,1,1,2,2,3]), a2=pick([1,1,2,2,3,3]);
     var c1=a1*s.x+b1*s.y, c2=a2*s.x+b2*s.y;
     if(!validLinear(a1,b1,c1,a2,b2,c2,s.x,s.y,40)) continue;
-    return {kind:'linear',std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+    return {kind:'linear',type:'L1',std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
             html:systemHTML(eqStr(a1,b1,c1),eqStr(a2,b2,c2))};
   }
   return genL1Fallback();
 }
 function genL1Fallback(){
   var x=2,y=3;
-  return {kind:'linear',std:{a1:1,b1:1,c1:x+y,a2:1,b2:-1,c2:x-y},x:x,y:y,
+  return {kind:'linear',type:'L1',std:{a1:1,b1:1,c1:x+y,a2:1,b2:-1,c2:x-y},x:x,y:y,
           html:systemHTML(eqStr(1,1,x+y),eqStr(1,-1,x-y))};
 }
 
@@ -349,7 +394,7 @@ function genL2(){
     if(Math.min(lcm(a1,a2),lcm(b1,b2))>12) continue;
     var c1=a1*s.x+b1*s.y, c2=a2*s.x+b2*s.y;
     if(!validLinear(a1,b1,c1,a2,b2,c2,s.x,s.y,50)) continue;
-    return {kind:'linear',std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+    return {kind:'linear',type:'L2',std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
             html:systemHTML(eqStr(a1,b1,c1),eqStr(a2,b2,c2))};
   }
   return genL1();
@@ -377,7 +422,7 @@ function genParen(cap){
       var c2=a2*s.x+b2*s.y;
       if(!validLinear(a1,b1,c1p,a2,b2,c2,s.x,s.y,cap)) continue;
       if(Math.abs(rhs)>cap+10) continue;
-      return {kind:'linear',std:{a1:a1,b1:b1,c1:c1p,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+      return {kind:'linear',type:'paren',std:{a1:a1,b1:b1,c1:c1p,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
               html:systemHTML(l1,eqStr(a2,b2,c2)),
               pre:[{lb:'かっこを外して整理する',
                     bd:systemHTML(eqStr(a1,b1,c1p),eqStr(a2,b2,c2))}]};
@@ -395,7 +440,7 @@ function genParen(cap){
       var c2b=a2b*s.x+b2b*s.y;
       if(!validLinear(a1,m,c1q,a2b,b2b,c2b,s.x,s.y,cap)) continue;
       if(Math.abs(rhsq)>cap+10) continue;
-      return {kind:'linear',std:{a1:a1,b1:m,c1:c1q,a2:a2b,b2:b2b,c2:c2b},x:s.x,y:s.y,
+      return {kind:'linear',type:'paren',std:{a1:a1,b1:m,c1:c1q,a2:a2b,b2:b2b,c2:c2b},x:s.x,y:s.y,
               html:systemHTML(l1,eqStr(a2b,b2b,c2b)),
               pre:[{lb:'かっこを外して整理する',
                     bd:systemHTML(eqStr(a1,m,c1q),eqStr(a2b,b2b,c2b))}]};
@@ -416,7 +461,7 @@ function genRatio(){
   }else{
     q=coefTerm(a,X)+' = '+coefTerm(b,Y)+' のとき、'+X+' : '+Y+' を最も簡単な整数の比で表しなさい。';
   }
-  return {kind:'ratio',a:a,b:b,zeroForm:zeroForm,rx:b/g,ry:a/g,
+  return {kind:'ratio',type:'ratio',a:a,b:b,zeroForm:zeroForm,rx:b/g,ry:a/g,
           html:'<div class="qtext">'+q+'</div>'};
 }
 
@@ -437,7 +482,7 @@ function genFrac(){
     if(Math.abs(c2)>45) continue;
     if(!validLinear(a1,b1,c1,a2,b2,c2,x,y,60)) continue;
     var l1=frac(X,md)+' '+(sgn>0?'+':'−')+' '+frac(Y,nd)+' = '+n(k);
-    return {kind:'linear',std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:x,y:y,
+    return {kind:'linear',type:'frac',std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:x,y:y,
             html:systemHTML(l1,eqStr(a2,b2,c2)),
             pre:[{lb:'①の両辺に '+L+' をかけて分母をはらう',
                   bd:systemHTML(eqStr(a1,b1,c1),eqStr(a2,b2,c2))}]};
@@ -457,7 +502,7 @@ function genDec(){
     if(!validLinear(A,B,num,a2,b2,c2,s.x,s.y,60)) continue;
     var dec=(num/10).toFixed(1).replace('-','−');
     var l1='0.'+A+X+' '+(B<0?'−':'+')+' 0.'+Math.abs(B)+Y+' = '+dec;
-    return {kind:'linear',std:{a1:A,b1:B,c1:num,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+    return {kind:'linear',type:'dec',std:{a1:A,b1:B,c1:num,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
             html:systemHTML(l1,eqStr(a2,b2,c2)),
             pre:[{lb:'①の両辺を 10 倍して小数をなくす',
                   bd:systemHTML(eqStr(A,B,num),eqStr(a2,b2,c2))}]};
@@ -465,14 +510,183 @@ function genDec(){
   return genL2();
 }
 
+/* ============================================================
+   Level 5（発展）
+   ------------------------------------------------------------
+   入試の実際の数値を見ると、係数は 1〜9、定数項は絶対値 30 程度、
+   解は 1桁の整数（負を含む）で、Level 4 とほぼ同じレンジ。
+   つまり難しさは「数の大きさ」ではなく「式の形」で出す。
+   ============================================================ */
+
+/* --- Level 5-A：整理が必要な形 ---------------------------------
+   ・かっこの中に x と y の両方が入る  例) 7x − 2(x + y) = 19
+   ・両辺に文字と定数が散らばる        例) 4x + 5 = 3y − 2
+   どちらも ax + by = c にそろえるところで符号ミスが起きやすい。
+   戻り値は {a,b,c,html}。a, b, c は整理後の係数（＝表示式と等価） */
+function messyEq(x0,y0){
+  var t=Math.random(), p,m,q,r,a,b,c,k,l;
+
+  if(t<0.40){
+    /* px + m(qx + ry) = c   → (p+mq)x + (mr)y = c */
+    p=rc(7); m=pick([-1,-1,-2,-3,2,3]); q=pick([1,1,1,2,3]); r=rc(3);
+    a=p+m*q; b=m*r;
+    if(a===0||b===0||Math.abs(a)>9||Math.abs(b)>9) return null;
+    c=a*x0+b*y0;
+    if(Math.abs(c)>45) return null;
+    return {a:a,b:b,c:c,paren:true,
+            html:coefTerm(p,X)+parenTerm(m,coefTerm(q,X)+joinTerm(r,Y),false)+' = '+n(c)};
+  }
+
+  if(t<0.70){
+    /* px + k = m(qy + rx)   → (p−mr)x + (−mq)y = −k */
+    p=rc(6); m=pick([2,3,4,-2,-3]); q=pick([1,2,2,3]); r=rc(3);
+    a=p-m*r; b=-m*q;
+    if(a===0||b===0||Math.abs(a)>9||Math.abs(b)>9) return null;
+    c=a*x0+b*y0; k=-c;
+    if(Math.abs(k)>30) return null;
+    return {a:a,b:b,c:c,paren:true,
+            html:coefTerm(p,X)+constTail(k)+' = '+parenTerm(m,coefTerm(q,Y)+joinTerm(r,X),true)};
+  }
+
+  /* px + k = qy + l   → px − qy = l − k （移項だけの形。愛知29A と同型） */
+  p=rc(6); q=rc(6);
+  a=p; b=-q;
+  c=a*x0+b*y0;
+  k=rc(8); l=c+k;
+  if(Math.abs(c)>45||Math.abs(l)>30) return null;
+  return {a:a,b:b,c:c,paren:false,
+          html:coefTerm(p,X)+constTail(k)+' = '+coefTerm(q,Y)+constTail(l)};
+}
+
+function genMessy(){
+  for(var i=0;i<1500;i++){
+    var s=genSolution(7);
+    var e1=messyEq(s.x,s.y);
+    if(!e1) continue;
+
+    var a2,b2,c2,l2,hasParen=e1.paren;
+    if(Math.random()<0.35){
+      /* 2式とも整理が必要（単元まとめテストの問4(2) と同型） */
+      var e2=messyEq(s.x,s.y);
+      if(!e2) continue;
+      a2=e2.a; b2=e2.b; c2=e2.c; l2=e2.html;
+      if(e2.paren) hasParen=true;
+    }else{
+      a2=rc(5); b2=rc(5); c2=a2*s.x+b2*s.y;
+      l2=eqStr(a2,b2,c2);
+    }
+    if(!validLinear(e1.a,e1.b,e1.c,a2,b2,c2,s.x,s.y,45)) continue;
+    /* 整理したあとの加減法が重くなりすぎないようにする */
+    if(Math.min(lcm(e1.a,a2),lcm(e1.b,b2))>20) continue;
+
+    return {kind:'linear',type:'messy',
+            std:{a1:e1.a,b1:e1.b,c1:e1.c,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+            html:systemHTML(e1.html,l2),
+            pre:[{lb:(hasParen?'かっこを外し、移項して ':'移項して ')+X+' と '+Y+' を左辺に集める',
+                  bd:systemHTML(eqStr(e1.a,e1.b,e1.c),eqStr(a2,b2,c2))}]};
+  }
+  return genParen(60);
+}
+
+/* --- Level 5-B：A = B = C 型 ------------------------------------
+   A = a1x + b1y + k1、B = a2x + b2y + k2、C = 数
+   3通りの分け方のうち「右辺が数になる A=C と B=C」を選ぶのが定石。
+   解を先に決め、A から C を作り、B の定数項を逆算して必ず成立させる。 */
+function genABC(){
+  for(var i=0;i<1500;i++){
+    var s=genSolution(6);
+    if(s.x===0||s.y===0) continue;
+
+    var a1=rc(5), b1=rc(5);
+    var k1=pick([0,0,0,0,0,1,-1,2,-2,3,-3]);
+    var e=a1*s.x+b1*s.y+k1;                 /* ← C（数） */
+    if(Math.abs(e)>25) continue;
+
+    var a2=rc(5), b2=rc(5);
+    var k2=e-a2*s.x-b2*s.y;                 /* B が C に等しくなるように逆算 */
+    if(Math.abs(k2)>4) continue;
+
+    var c1=e-k1, c2=e-k2;
+    if(!validLinear(a1,b1,c1,a2,b2,c2,s.x,s.y,45)) continue;
+    if(Math.min(lcm(a1,a2),lcm(b1,b2))>15) continue;
+
+    var A=coefTerm(a1,X)+joinTerm(b1,Y)+constTail(k1);
+    var B=coefTerm(a2,X)+joinTerm(b2,Y)+constTail(k2);
+
+    var split;
+    if(k1===0&&k2===0){
+      split=systemHTML(eqStr(a1,b1,c1),eqStr(a2,b2,c2));
+    }else{
+      split=lineHTML(A+' = '+n(e))+lineHTML(B+' = '+n(e))+
+            lineHTML('定数を右辺に移して')+systemHTML(eqStr(a1,b1,c1),eqStr(a2,b2,c2));
+    }
+
+    return {kind:'linear',type:'abc',
+            std:{a1:a1,b1:b1,c1:c1,a2:a2,b2:b2,c2:c2},x:s.x,y:s.y,
+            html:'<div class="abc">'+A+' = '+B+' = '+n(e)+'</div>',
+            pre:[
+              {lb:'どの 2 組に分けるかを決める',
+               bd:'<div class="warn">'+
+                  'この式は <b>A＝'+A+'</b>、<b>B＝'+B+'</b>、<b>C＝'+n(e)+'</b> の 3 つが'+
+                  'すべて等しいという意味です。<br>'+
+                  '<b>A = B</b> ／ <b>A = C</b> ／ <b>B = C</b> のうち <b>2 組</b>を選べば連立方程式になります。'+
+                  'どれを選んでも答えは同じですが、今回は <b>C が数</b>なので、'+
+                  '<b>A = C</b> と <b>B = C</b> を選ぶと右辺が数になり、そのまま加減法に入れます。</div>'},
+              {lb:'A = C、B = C の 2 式に分ける',bd:split}
+            ]};
+  }
+  return genMessy();
+}
+
+/* --- Level 5-C：解が与えられて係数を求める型 ---------------------
+   例) 2ax + by = 5 、 ax + 4by = −1 の解が x=3, y=1 のとき a, b を求めよ
+   解を代入すると、そのまま a, b についての連立方程式になる。
+   x, y が数になり a, b が未知数になる「役割の入れかわり」が要点。 */
+function genCoef(){
+  for(var i=0;i<1500;i++){
+    var a0=rc(6), b0=rc(6);                 /* ← これが答え */
+    var x0=rc(4), y0=rc(4);                 /* ← 問題文で与える解 */
+    var p1=pick([1,1,2,3,-1,-2]), q1=pick([1,1,2,3,-1,-2]);
+    var p2=pick([1,2,3,4,-1,-2]), q2=pick([1,2,3,4,-1,-2]);
+
+    /* 代入後の a, b についての連立方程式 */
+    var A1=p1*x0, B1=q1*y0, A2=p2*x0, B2=q2*y0;
+    var C1=A1*a0+B1*b0, C2=A2*a0+B2*b0;
+    if(!validLinear(A1,B1,C1,A2,B2,C2,a0,b0,60)) continue;
+    if(Math.abs(A1)>9||Math.abs(B1)>9||Math.abs(A2)>9||Math.abs(B2)>9) continue;
+    if(Math.min(lcm(A1,A2),lcm(B1,B2))>24) continue;
+
+    var l1=unknownTerm(p1,VA,X,true)+unknownTerm(q1,VB,Y,false)+' = '+n(C1);
+    var l2=unknownTerm(p2,VA,X,true)+unknownTerm(q2,VB,Y,false)+' = '+n(C2);
+
+    return {kind:'linear',type:'coef',
+            std:{a1:A1,b1:B1,c1:C1,a2:A2,b2:B2,c2:C2},
+            x:a0,y:b0,                      /* 答えは a, b */
+            sx:x0,sy:y0,                    /* 問題文で与える解 */
+            vx:'a',vy:'b',vxH:VA,vyH:VB,
+            html:'<div class="qwrap">'+systemHTML(l1,l2)+
+                 '<div class="qask">の解が <b>'+X+' = '+n(x0)+'</b>、<b>'+Y+' = '+n(y0)+
+                 '</b> であるとき、'+VA+'、'+VB+' の値を求めなさい。</div></div>',
+            pre:[{lb:X+' = '+n(x0)+'、'+Y+' = '+n(y0)+' を代入して、'+VA+' と '+VB+' の連立方程式にする',
+                  bd:systemHTML(eqStr(A1,B1,C1,VA,VB),eqStr(A2,B2,C2,VA,VB))}]};
+  }
+  return genABC();
+}
+
 function genByLevel(lv){
   if(lv===1) return genL1();
   if(lv===2) return genL2();
   if(lv===3) return (Math.random()<0.4)?genRatio():genParen(50);
-  var r=Math.random();
-  if(r<0.4) return genFrac();
-  if(r<0.7) return genDec();
-  return genParen(60);
+  if(lv===4){
+    var r=Math.random();
+    if(r<0.4) return genFrac();
+    if(r<0.7) return genDec();
+    return genParen(60);
+  }
+  var r5=Math.random();
+  if(r5<0.40) return genMessy();
+  if(r5<0.75) return genABC();
+  return genCoef();
 }
 
 /* ============================================================
@@ -483,11 +697,14 @@ function linearSteps(p){
   var steps=[];
   if(p.pre) for(var i=0;i<p.pre.length;i++) steps.push(p.pre[i]);
 
+  /* 係数を求める型では未知数が a, b になる */
+  var VX=p.vxH||X, VY=p.vyH||Y;
+
   var useY=lcm(b1,b2)<=lcm(a1,a2);
   var L=useY?lcm(b1,b2):lcm(a1,a2);
   var m1=useY?L/Math.abs(b1):L/Math.abs(a1);
   var m2=useY?L/Math.abs(b2):L/Math.abs(a2);
-  var vH=useY?Y:X;
+  var vH=useY?VY:VX;
 
   var A1=a1*m1,B1=b1*m1,C1=c1*m1;
   var A2=a2*m2,B2=b2*m2,C2=c2*m2;
@@ -497,7 +714,7 @@ function linearSteps(p){
     if(m1!==1) ps.push('①を '+m1+' 倍');
     if(m2!==1) ps.push('②を '+m2+' 倍');
     steps.push({lb:ps.join('、')+'して、'+vH+' の係数の絶対値をそろえる',
-                bd:systemHTML(eqStr(A1,B1,C1),eqStr(A2,B2,C2))});
+                bd:systemHTML(eqStr(A1,B1,C1,VX,VY),eqStr(A2,B2,C2,VX,VY))});
   }
 
   var k1=useY?B1:A1, k2=useY?B2:A2;
@@ -506,34 +723,39 @@ function linearSteps(p){
   var B=same?B1-B2:B1+B2;
   var C=same?C1-C2:C1+C2;
   var coef=useY?A:B;
-  var remH=useY?X:Y;
+  var remH=useY?VX:VY;
   var remV=useY?p.x:p.y;
 
   steps.push({
-    lb:vH+' の係数の符号が'+(same?'同じ':'ちがう')+'ので、'+(same?'辺々を引く（①−②）':'辺々を足す（①＋②）')+'と '+vH+' が消える',
-    bd:lineHTML(coefTerm(coef,remH)+' = '+n(C))+
-       lineHTML('両辺を '+n(coef)+' でわって　'+remH+' = <b>'+n(remV)+'</b>')
+    lb:vH+' の係数の符号が'+(same?'同じな':'ちがう')+'ので、'+(same?'辺々を引く（①−②）':'辺々を足す（①＋②）')+'と '+vH+' が消える',
+    /* 係数が 1 のときに「両辺を 1 でわって」と出ると無意味な行になるので出し分ける */
+    bd:(coef===1)
+      ? lineHTML(remH+' = <b>'+n(remV)+'</b>')
+      : lineHTML(coefTerm(coef,remH)+' = '+n(C))+
+        ((coef===-1)
+          ? lineHTML('両辺の符号を変えて　'+remH+' = <b>'+n(remV)+'</b>')
+          : lineHTML('両辺を '+n(coef)+' でわって　'+remH+' = <b>'+n(remV)+'</b>'))
   });
 
   var bd='';
   if(useY){
     var pr=a1*p.x;
-    bd+=lineHTML('①に '+X+' = '+n(p.x)+' を代入');
-    bd+=lineHTML(n(a1)+'×('+n(p.x)+')'+joinTerm(b1,Y)+' = '+n(c1));
-    bd+=lineHTML(n(pr)+joinTerm(b1,Y)+' = '+n(c1));
-    bd+=lineHTML(coefTerm(b1,Y)+' = '+n(c1-pr));
-    bd+=lineHTML(Y+' = <b>'+n(p.y)+'</b>');
+    bd+=lineHTML('①に '+VX+' = '+n(p.x)+' を代入');
+    bd+=lineHTML(n(a1)+'×('+n(p.x)+')'+joinTerm(b1,VY)+' = '+n(c1));
+    bd+=lineHTML(n(pr)+joinTerm(b1,VY)+' = '+n(c1));
+    bd+=lineHTML(coefTerm(b1,VY)+' = '+n(c1-pr));
+    bd+=lineHTML(VY+' = <b>'+n(p.y)+'</b>');
   }else{
     var pr2=b1*p.y;
-    bd+=lineHTML('①に '+Y+' = '+n(p.y)+' を代入');
-    bd+=lineHTML(coefTerm(a1,X)+(b1<0?' − ':' + ')+Math.abs(b1)+'×('+n(p.y)+') = '+n(c1));
-    bd+=lineHTML(coefTerm(a1,X)+(pr2<0?' − ':' + ')+Math.abs(pr2)+' = '+n(c1));
-    bd+=lineHTML(coefTerm(a1,X)+' = '+n(c1-pr2));
-    bd+=lineHTML(X+' = <b>'+n(p.x)+'</b>');
+    bd+=lineHTML('①に '+VY+' = '+n(p.y)+' を代入');
+    bd+=lineHTML(coefTerm(a1,VX)+(b1<0?' − ':' + ')+Math.abs(b1)+'×('+n(p.y)+') = '+n(c1));
+    bd+=lineHTML(coefTerm(a1,VX)+(pr2<0?' − ':' + ')+Math.abs(pr2)+' = '+n(c1));
+    bd+=lineHTML(coefTerm(a1,VX)+' = '+n(c1-pr2));
+    bd+=lineHTML(VX+' = <b>'+n(p.x)+'</b>');
   }
   steps.push({lb:'もう一方の文字を求める',bd:bd});
 
-  steps.push({lb:'答え',bd:lineHTML('<b>'+X+' = '+n(p.x)+' 、 '+Y+' = '+n(p.y)+'</b>')});
+  steps.push({lb:'答え',bd:lineHTML('<b>'+VX+' = '+n(p.x)+' 、 '+VY+' = '+n(p.y)+'</b>')});
   return steps;
 }
 
@@ -564,7 +786,8 @@ function ratioSteps(p){
    レベル管理（直近10問のスライディングウィンドウ）
    昇格 9〜10 / 維持 6〜8 / 降格 0〜5、レベル変更時はウィンドウをリセット
    ============================================================ */
-var LV_NAME={1:'基礎',2:'標準',3:'弱点特訓',4:'実戦'};
+var LV_NAME={1:'基礎',2:'標準',3:'弱点特訓',4:'実戦',5:'発展'};
+var LV_MAX=5;
 var KEY='renritsu-drill-v1';
 var st={level:1,win:[],total:0,ok:0,mode:'level'};
 
@@ -573,7 +796,7 @@ function load(){
     var raw=localStorage.getItem(KEY);
     if(!raw) return;
     var o=JSON.parse(raw);
-    if(o&&o.level>=1&&o.level<=4){
+    if(o&&o.level>=1&&o.level<=LV_MAX){
       st.level=o.level;
       st.win=Array.isArray(o.win)?o.win.slice(-10):[];
       st.total=o.total||0; st.ok=o.ok||0;
@@ -593,8 +816,8 @@ function record(correct){
     var c=0;
     for(var i=0;i<st.win.length;i++) if(st.win[i]) c++;
     if(c>=9){
-      if(st.level<4){ st.level++; st.win=[]; note='🎉 レベルアップ！ Level '+st.level+' へ'; }
-      else{ st.win=[]; note='🏆 Level 4 を維持中。この調子！'; }
+      if(st.level<LV_MAX){ st.level++; st.win=[]; note='🎉 レベルアップ！ Level '+st.level+' へ'; }
+      else{ st.win=[]; note='🏆 Level '+LV_MAX+' を維持中。この調子！'; }
     }else if(c<=5){
       if(st.level>1){ st.level--; st.win=[]; note='📘 Level '+st.level+' に戻って基礎固めをしよう'; }
       else{ st.win=[]; note='📘 Level 1 でもう少し練習しよう'; }
@@ -681,11 +904,14 @@ pad.addEventListener('click',function(e){
 });
 
 function newProblem(){
-  clearPad();                      /* 次の問題に進んだら手書きメモを自動で消す */
+  clearPad(false);                 /* 次の問題に進んだら手書きメモを自動で消す */
   cur=(st.mode==='ratio')?genRatio():genByLevel(st.level);
   answered=false;
   qbox.innerHTML=cur.html;
   qbox.className='qbox math';
+  /* 係数を求める型では答えが a, b になるのでラベルを差し替える */
+  $('lb-x').textContent=(cur.vx||'x')+' =';
+  $('lb-y').textContent=(cur.vy||'y')+' =';
   var isRatio=(cur.kind==='ratio');
   ansXY.style.display=isRatio?'none':'flex';
   ansRatio.style.display=isRatio?'flex':'none';
@@ -730,7 +956,7 @@ function check(){
     var ux=parseInt(inX.value,10), uy=parseInt(inY.value,10);
     if(isNaN(ux)||isNaN(uy)){ flashEmpty(); return; }
     if(ux===cur.x&&uy===cur.y) correct=true;
-    else msg='❌ おしい！正解は x = '+cur.x+' 、 y = '+cur.y;
+    else msg='❌ おしい！正解は '+(cur.vx||'x')+' = '+cur.x+' 、 '+(cur.vy||'y')+' = '+cur.y;
   }
 
   answered=true;
@@ -832,6 +1058,7 @@ function resizeCanvas(){
   var dpr=window.devicePixelRatio||1;
   var nw=Math.max(1,Math.floor(r.width)), nh=Math.max(1,Math.floor(r.height));
   if(nw===cssW&&nh===cssH&&canvas.width===Math.round(nw*dpr)) return;
+  dropUndo();          /* 解像度が変わるとスナップショットが使えなくなる */
 
   var snap=null;
   if(canvas.width>0&&canvas.height>0&&cssW>0){
@@ -862,6 +1089,7 @@ canvas.addEventListener('pointerdown',function(e){
   else if(e.pointerType==='touch'&&performance.now()-lastPen<1500) return; /* 手のひら誤爆を防ぐ */
   if(e.pointerType==='mouse'&&e.button!==0) return;
   e.preventDefault();
+  dropUndo();          /* 描き始めたら「元に戻す」は引っこめる（新しい線が消えてしまうため） */
   activeId=e.pointerId; drawing=true;
   try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
   var p=pos(e);
@@ -890,9 +1118,26 @@ canvas.addEventListener('pointerup',endStroke);
 canvas.addEventListener('pointercancel',endStroke);
 canvas.addEventListener('pointerleave',endStroke);
 
-function clearPad(){
-  if(!ctx||!canvas.width) return;
-  drawing=false; activeId=null;
+/* --- 消す／元に戻す -----------------------------------------
+   「メモを消す」は取り消せない操作なので、手動で消したときだけ
+   直前の状態を1枚だけ持っておき「元に戻す」を出す。
+   問題を切り替えたときの自動クリアでは出さない
+   （前の問題のメモが復活するのは誤りなので）。 */
+var undoSnap=null, btnUndo=$('btn-undo');
+
+function showUndo(on){ btnUndo.className='ctool undo'+(on?' on':''); }
+function dropUndo(){ if(undoSnap){ undoSnap=null; showUndo(false); } }
+
+function snapshot(){
+  if(!canvas.width||!canvas.height) return null;
+  var c=document.createElement('canvas');
+  c.width=canvas.width; c.height=canvas.height;
+  c.getContext('2d').drawImage(canvas,0,0);
+  return c;
+}
+/* 内部座標は setTransform(dpr) がかかっているので、
+   スナップショットの出し入れは必ず等倍に戻してから行う */
+function wipe(){
   ctx.save();
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -900,7 +1145,28 @@ function clearPad(){
   ctx.beginPath();
   penStyle();
 }
-$('btn-clear').addEventListener('click',clearPad);
+
+function clearPad(manual){
+  if(!ctx||!canvas.width) return;
+  drawing=false; activeId=null;
+  if(manual){ undoSnap=snapshot(); showUndo(!!undoSnap); }
+  else dropUndo();
+  wipe();
+}
+function undoClear(){
+  if(!undoSnap) return;
+  drawing=false; activeId=null;
+  wipe();
+  ctx.save();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.drawImage(undoSnap,0,0);
+  ctx.restore();
+  ctx.beginPath();
+  penStyle();
+  dropUndo();
+}
+$('btn-clear').addEventListener('click',function(){ clearPad(true); });
+btnUndo.addEventListener('click',undoClear);
 
 if(window.ResizeObserver){
   new ResizeObserver(resizeCanvas).observe(wrap);
